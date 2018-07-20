@@ -1,7 +1,10 @@
 #include "vmem_parser.h"
 
+#define MEMCARVE_VER "libmemcarve 1.0.0"
+
 typedef unsigned char BYTE;
 
+// TODO: lock containters should not be limited to the width of an unsigned char
 struct lock_container{
       unsigned char cap;
       unsigned char n;
@@ -67,7 +70,7 @@ void update_mem_map(struct mem_map* mem, bool integers);
 void narrow_mem_map_int(struct mem_map* mem, int match);
 void narrow_mem_map_str(struct mem_map* mem, const char* match, bool exact_s, bool exact_e);
 bool print_locks(struct lock_container* lc, bool integers);
-int remove_lock(struct lock_container* lc, int rm_s, bool keep_first);
+int remove_lock(struct lock_container* lc, unsigned char rm_s, bool keep_first);
 int free_locks(struct lock_container* lc);
 struct lock_container* lock_container_init(struct lock_container* lc, unsigned char initial_sz);
 pid_t create_lock(struct lock_container* lc, pid_t pid, void** addr, int* i_val, char** s_val, unsigned int n_addr, bool mul_val, bool integers, void* f_o_r);
