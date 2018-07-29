@@ -19,8 +19,8 @@ void free_blkstr(struct str_blk* blk){
       free(blk);
 }
 
-void free_mem_map(struct mem_map* mmap, bool integers){
-      if(integers)free(mmap->i_mmap);
+void free_mem_map(struct mem_map* mmap){
+      if(mmap->integers)free(mmap->i_mmap);
       else{
             if(!mmap->blk->in_place){
                   for(unsigned int i = 0; i < mmap->size; ++i)
@@ -139,15 +139,26 @@ void resize_str_mmap(struct mem_map* c_mm, unsigned int* m_size, int factor){
 // if mem == NULL a new struct mem_map is malloc'd
 struct mem_map* mem_map_init(struct mem_map* mem, pid_t pid, bool unmarked_additional){
       if(!mem)mem = malloc(sizeof(struct mem_map));
-      mem->size = 0;
+      mem->size = mem->i_size = mem->s_size = 0;
       mem->mapped_rgn = get_vmem_locations(pid, unmarked_additional);
       mem->low_mem = false;
       mem->force_block_str = true;
       return mem;
 }
+// when mode is changed, the current size is stored in i_size or s_size
+bool set_mode_mem_map(struct mem_map* mem, bool integers){
+      if(mem->integers == integers)return false;
+      // we need to store mem->size
+      if(mem->integers)mem->i_size = mem->size;
+      else mem->s_size = mem->size;
+      mem->integers = integers;
+      mem->size = integers ? mem->i_size : mem->s_size;
+      return true;
+}
 
 void populate_mem_map(struct mem_map* mmap, int d_rgn, bool use_additional_rgns, bool integers, int bytes){
-      // TODO: possibly remove this because mem_map_init makes it redundant
+      // store size, toggle mmap->integers in case mmap is being repopulated with a different mode
+      set_mode_mem_map(mmap, integers);
       mmap->size = 0;
       mmap->int_mode_bytes = bytes;
       mmap->d_rgn = d_rgn;
@@ -155,10 +166,9 @@ void populate_mem_map(struct mem_map* mmap, int d_rgn, bool use_additional_rgns,
       unsigned int m_size = 0;
       if(d_rgn == STACK || d_rgn == BOTH)m_size = (char*)mmap->mapped_rgn.stack.end-(char*)mmap->mapped_rgn.stack.start;
       if(d_rgn == HEAP || d_rgn == BOTH)m_size += (char*)mmap->mapped_rgn.heap.end-(char*)mmap->mapped_rgn.heap.start;
-      if(use_additional_rgns){
+      if(use_additional_rgns)
             for(int i = 0; i < mmap->mapped_rgn.n_remaining; ++i)
                   m_size += (char*)mmap->mapped_rgn.remaining_addr[i].end-(char*)mmap->mapped_rgn.remaining_addr[i].start;
-      }
       unsigned long buf_s = 0;
       // TODO: fix integer mode when int_mode_bytes > 4
       if(integers){
@@ -270,11 +280,11 @@ void populate_mem_map(struct mem_map* mmap, int d_rgn, bool use_additional_rgns,
       }
 }
 
-void update_mem_map(struct mem_map* mem, bool integers){
+void update_mem_map(struct mem_map* mem){
       if(mem->size == 0)return;
       // TODO: should string update optimization always be used? it's much faster
-      if(mem->low_mem || (!integers && (!mem->blk->in_place || mem->size < RELOAD_CUTOFF/10000)) || (integers && mem->size < RELOAD_CUTOFF)){
-            if(integers){
+      if(mem->low_mem || (!mem->integers && (!mem->blk->in_place || mem->size < RELOAD_CUTOFF/10000)) || (mem->integers && mem->size < RELOAD_CUTOFF)){
+            if(mem->integers){
                   for(unsigned int i = 0; i < mem->size; ++i)
                         mem->i_mmap[i].value = read_single_val_from_pid_mem(mem->mapped_rgn.pid, mem->int_mode_bytes, mem->i_mmap[i].addr);
             }
@@ -285,10 +295,10 @@ void update_mem_map(struct mem_map* mem, bool integers){
             }
       }
       else{ // faster but more memory intensive update methods
-            if(integers){
+            if(mem->integers){
                   struct mem_map tmp_mm;
                   tmp_mm.mapped_rgn = mem->mapped_rgn;
-                  populate_mem_map(&tmp_mm, mem->d_rgn, mem->use_addtnl, integers, mem->int_mode_bytes);
+                  populate_mem_map(&tmp_mm, mem->d_rgn, mem->use_addtnl, mem->integers, mem->int_mode_bytes);
                   for(unsigned int i = 0; i < mem->size; ++i){
                         if(mem->i_mmap[i].addr == tmp_mm.i_mmap[i].addr)mem->i_mmap[i].value = tmp_mm.i_mmap[i].value;
                         else{
@@ -296,7 +306,7 @@ void update_mem_map(struct mem_map* mem, bool integers){
                               ++i;
                         }
                   }
-                  free_mem_map(&tmp_mm, integers);
+                  free_mem_map(&tmp_mm);
             }
             else{
                   if(mem->blk->stack)
@@ -326,7 +336,7 @@ void narrow_mem_map_int(struct mem_map* mem, int match){
             }
       }
       if(mem->size == 0){
-            free_mem_map(mem, true);
+            free_mem_map(mem);
             return;
       }
       if(mem->size < initial){
@@ -365,7 +375,7 @@ void narrow_mem_map_str(struct mem_map* mem, const char* match, bool exact_s, bo
       }
       // to make sure not to try to reallocate empty mmap with resize
       if(mem->size == 0){
-            free_mem_map(mem, false);
+            free_mem_map(mem);
             return;
       }
       if(mem->size < initial){
@@ -408,7 +418,7 @@ void narrow_mem_map_str(struct mem_map* mem, const char* match, bool exact_s, bo
                               tmp_s_mmap[i].addr = mem->s_mmap[i].addr;
                               tmp_s_mmap[i].value = strdup(mem->s_mmap[i].value);
                         }
-                        free_mem_map(mem, false);
+                        free_mem_map(mem);
                         mem->blk->in_place = false;
                   }
             }
