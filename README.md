@@ -101,11 +101,13 @@ pid_memcpy(getpid(), src_pid, &rgn, addr_mem_rgn, sizeof(struct mem_rgn));
 ```
 
 the following functions defined in vmem_access.h are used for creating and manipulating `mem_map` structs defined in vmem_access.h
+* `bool set_mode_mem_map(struct mem_map* mem, bool integers)`
 * `void populate_mem_map(struct mem_map* mmap, int d_rgn, bool use_additional_rgns, bool integers, int bytes)`
-* `void update_mem_map(struct mem_map* mem, bool integers)`
+* `void update_mem_map(struct mem_map* mem)`
 * `struct mem_map* mem_map_init(struct mem_map* mem, pid_t pid, bool unmarked_additional)`
 * `void narrow_mem_map_int(struct mem_map* mem, int match)`
 * `void narrow_mem_map_str(struct mem_map* mem, const char* match, bool exact_s, bool exact_e)`
+* `void free_mem_map(struct mem_map* mmap)`
 
 in order to use these functions, an initial `mem_map` struct must be created and initialized using `mem_map_init`.
 `mem_map_init` sets mem_map.size to 0, populates mem_map.mapped_rgn, sets mem_map.low_mem to false and, mem_map.force_block_str to true.
@@ -140,8 +142,7 @@ if `mem_map_init`'s `mem` parameter is `NULL`, a new malloc'd mem_map struct wil
 
 the initialization and population of a `mem_map` struct is demonstrated below, populating it with integers from both the stack and heap, as well as any additional memory regions that are found
 
-### NOTE: a mem_map can be populated with both integers and strings simultaneously. it is up to the user to do this responsibly by keeping track of the size of the original mem_map before populating with a different setting and by ensuring that mem_map.size is correct before using any function that operates on the mem_map
-
+### NOTE: a mem_map can be populated with both integers and strings simultaneously. if a mem_map is populated with both strings and integers, it is important to use set_mode_mem_map before using any function that operates on the mem_map or accessing mem_map.size
 ```c
 // assuming pid_t pid = some valid process id 
 struct mem_map vmem;
@@ -149,7 +150,7 @@ mem_map_init(&vmem, pid, true);
 // BOTH is a macro that indicates we will be searching both the stack and heap
 populate_mem_map(&vmem, BOTH, true, true, sizeof(int));
 free_mem_rgn(&vmem.mapped_rgn);
-free_mem_map(&vmem, true);
+free_mem_map(&vmem);
 ```
 
 the same can be achieved with the following code
@@ -159,7 +160,7 @@ struct mem_map* vmem = mem_map_init(NULL, pid, true);
 // BOTH is a macro that indicates we will be searching both the stack and heap
 populate_mem_map(vmem, BOTH, true, true, sizeof(int));
 free_mem_rgn(&vmem->mapped_rgn);
-free_mem_map(vmem, true);
+free_mem_map(vmem);
 free(vmem);
 ```
 
