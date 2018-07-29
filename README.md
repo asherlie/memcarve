@@ -102,12 +102,12 @@ pid_memcpy(getpid(), src_pid, &rgn, addr_mem_rgn, sizeof(struct mem_rgn));
 
 the following functions defined in vmem_access.h are used for creating and manipulating `mem_map` structs defined in vmem_access.h
 * `bool set_mode_mem_map(struct mem_map* mem, bool integers)`
-* `void populate_mem_map(struct mem_map* mmap, int d_rgn, bool use_additional_rgns, bool integers, int bytes)`
+* `void populate_mem_map(struct mem_map* mem, int d_rgn, bool use_additional_rgns, bool integers, int bytes)`
 * `void update_mem_map(struct mem_map* mem)`
 * `struct mem_map* mem_map_init(struct mem_map* mem, pid_t pid, bool unmarked_additional)`
 * `void narrow_mem_map_int(struct mem_map* mem, int match)`
 * `void narrow_mem_map_str(struct mem_map* mem, const char* match, bool exact_s, bool exact_e)`
-* `void free_mem_map(struct mem_map* mmap)`
+* `void free_mem_map(struct mem_map* mem)`
 
 in order to use these functions, an initial `mem_map` struct must be created and initialized using `mem_map_init`.
 `mem_map_init` sets mem_map.size to 0, populates mem_map.mapped_rgn, sets mem_map.low_mem to false and, mem_map.force_block_str to true.
