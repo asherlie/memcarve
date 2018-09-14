@@ -167,10 +167,10 @@ free(vmem);
 # memory locking
 the remaining functions defined in vmem_access.h are used for creating, removing, and keeping track of locks
 * `bool print_locks(struct lock_container* lc, bool integers)`
-* `int remove_lock(struct lock_container* lc, int rm_s, bool keep_first)`
+* `long remove_lock(struct lock_container* lc, int rm_s, bool keep_first)`
 * `int free_locks(struct lock_container* lc)`
 * `struct lock_container* lock_container_init(struct lock_container* lc, unsigned char initial_sz)`
-* `pid_t create_lock(struct lock_container* lc, pid_t pid, void** addr, int* i_val, char** s_val, unsigned int n_addr, bool mul_val, bool integers, void* f_o_r)`
+* `pid_t create_lock(struct lock_container* lc, pid_t pid, void** addr, int* i_val, char** s_val, unsigned int n_addr, bool mul_val, bool integers)`
 
 to use these, an initial `lock_container` struct must be created and initialized using `lock_container_init`.
 if `lock_container_init`'s `lc` parameter is `NULL`, a new malloc'd lock_container struct will be returned. otherwise `lock_container_init` will return a pointer to `lc`.
@@ -188,7 +188,7 @@ int i_val = 62;
 struct lock_container lc;
 lock_container_init(&lc, 1);
 // to lock a string value, the s_val parameter is set to a char**, and i_val to NULL
-create_lock(&lc, pid, &addr, &i_val, NULL, 1, false, true, NULL);
+create_lock(&lc, pid, &addr, &i_val, NULL, 1, false, true);
 /* indices of items in the lock_container struct are adjusted so that
    remove_lock with 0 as its rm_s parameter will always be valid for a non empty lock_container */
 // to remove this lock
