@@ -2,7 +2,7 @@
 
 #include <pthread.h>
 
-#define MEMCARVE_VER "libmemcarve 1.8.6"
+#define MEMCARVE_VER "libmemcarve 1.8.7"
 
 typedef unsigned char BYTE;
 

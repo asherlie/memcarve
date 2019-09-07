@@ -201,7 +201,7 @@ void insert_i_map(struct i_mmap_map* imm, void* addr, int* value){
       ind = (ind < 0) ? -1*ind : ind;
       int ind_prog = imm->bucket_ref[ind];
       if(imm->i_buckets[ind][ind_prog].addr == (void*)0xdecaf){
-            struct addr_int_pair* tmp_ip = malloc(sizeof(struct addr_int_pair)*((ind_prog*2)+1));
+            struct addr_int_pair* tmp_ip = calloc(sizeof(struct addr_int_pair), ((ind_prog*2)+1));
             tmp_ip[(ind_prog*2)].addr = (void*)0xdecaf;
             memcpy(tmp_ip, imm->i_buckets[ind], sizeof(struct addr_int_pair)*ind_prog);
             free(imm->i_buckets[ind]);
