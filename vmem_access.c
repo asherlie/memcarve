@@ -534,18 +534,15 @@ void narrow_mem_map_int(struct mem_map* mem, int match){
             free(dummy.remaining_addr);
 
             if(!s && mem->i_blk->stack){
-                  printf("we freed %li bytes from stack\n", (char*)mem->mapped_rgn.stack.end-(char*)mem->mapped_rgn.stack.start);
                   free(mem->i_blk->stack); mem->i_blk->stack = NULL;
             }
             if(!h && mem->i_blk->heap){
-                  printf("we freed %li bytes from heap\n", (char*)mem->mapped_rgn.heap.end-(char*)mem->mapped_rgn.heap.start);
                   free(mem->i_blk->heap); mem->i_blk->heap = NULL;
             }
             int a_f = 0;
             for(int i = 0; i < mem->i_blk->n_ad; ++i)
                   if(!a[i] && mem->i_blk->addtnl[i]){
                         ++a_f;
-                        printf("we freed %li bytes from adtnl[%i]\n", (char*)mem->mapped_rgn.remaining_addr[i].end-(char*)mem->mapped_rgn.remaining_addr[i].start, i);
                         free(mem->i_blk->addtnl[i]); mem->i_blk->addtnl[i] = NULL;
                   }
             
