@@ -28,7 +28,7 @@ void free_i_blk(struct int_blk* ib){
       if(ib->heap)free(ib->heap);
       if(ib->addtnl){
             for(int i = 0; i < ib->n_ad; ++i){
-                  free(ib->addtnl[i]);
+                  if(ib->addtnl[i])free(ib->addtnl[i]);
             }
             free(ib->addtnl);
       }
@@ -496,12 +496,64 @@ void narrow_mem_map_int(struct mem_map* mem, int match){
 
 
             unsigned int adj_size = 0;
+            int rgn;
+            _Bool s = 0, h = 0, a[mem->i_blk->n_ad+1];
+            memset(a, 0, mem->i_blk->n_ad+1);
+            /* to enable use of which_rgn(), we're creating a dummy
+             * struct mem_rgn
+             */
+            struct mem_rgn dummy;
+
+            dummy.stack.start = mem->i_blk->stack;
+            dummy.stack.end = mem->i_blk->stack+((char*)mem->mapped_rgn.stack.end-(char*)mem->mapped_rgn.stack.start);
+
+            dummy.heap.start = mem->i_blk->heap;
+            dummy.heap.end = mem->i_blk->heap+((char*)mem->mapped_rgn.heap.end-(char*)mem->mapped_rgn.heap.start);
+
+            dummy.remaining_addr = malloc(sizeof(struct m_addr_pair)*mem->i_blk->n_ad);
+            dummy.n_remaining = mem->i_blk->n_ad;
+
+            for(int i = 0; i < mem->i_blk->n_ad; ++i){
+                  dummy.remaining_addr[i].start = mem->i_blk->addtnl[i];
+                  dummy.remaining_addr[i].end = mem->i_blk->addtnl[i]+((char*)mem->mapped_rgn.remaining_addr[i].end-(char*)mem->mapped_rgn.remaining_addr[i].start);
+            }
+
             for(int i = 0; i < mem->i_mmap_hash.bucket_ref[ind]; ++i)
                   if(*mem->i_mmap_hash.i_buckets[ind][i].value == match){
+                        /* oh fuck this is checking the values of the block string */
+                        which_rgn(dummy, mem->i_mmap_hash.i_buckets[ind][i].value, &rgn);
+                        switch(rgn){
+                              case STACK: s = 1; break;
+                              case HEAP:  h = 1; break;
+                              default:    if(rgn >= 2)a[rgn-2] = 1;
+                        }
                         tmp_aip[0][adj_size].value = mem->i_mmap_hash.i_buckets[ind][i].value;
                         tmp_aip[0][adj_size++].addr = mem->i_mmap_hash.i_buckets[ind][i].addr;
                   }
+      
+            free(dummy.remaining_addr);
+
+            if(!s && mem->i_blk->stack){
+                  printf("we freed %li bytes from stack\n", (char*)mem->mapped_rgn.stack.end-(char*)mem->mapped_rgn.stack.start);
+                  free(mem->i_blk->stack); mem->i_blk->stack = NULL;
+            }
+            if(!h && mem->i_blk->heap){
+                  printf("we freed %li bytes from heap\n", (char*)mem->mapped_rgn.heap.end-(char*)mem->mapped_rgn.heap.start);
+                  free(mem->i_blk->heap); mem->i_blk->heap = NULL;
+            }
+            int a_f = 0;
+            for(int i = 0; i < mem->i_blk->n_ad; ++i)
+                  if(!a[i] && mem->i_blk->addtnl[i]){
+                        ++a_f;
+                        printf("we freed %li bytes from adtnl[%i]\n", (char*)mem->mapped_rgn.remaining_addr[i].end-(char*)mem->mapped_rgn.remaining_addr[i].start, i);
+                        free(mem->i_blk->addtnl[i]); mem->i_blk->addtnl[i] = NULL;
+                  }
             
+            /* if we've freed all additional we need to set to NULL */
+            if(a_f == mem->i_blk->n_ad){
+                  free(mem->i_blk->addtnl);
+                  mem->i_blk->addtnl = NULL;
+            }
 
             /* TODO: this should leverage init* */
             mem->i_mmap_hash.n_bux = 1;
